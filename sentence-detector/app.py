@@ -11,10 +11,11 @@ app = Flask(__name__)
 
 # Spark NLP Configuration
 spark = (SparkSession.builder \
-    .appName("Spark NLP Server") \
-    .config("spark.jars", "/tmp/spark-nlp-assembly-gpu-5.1.4.jar") \
-    .config("spark.nlp.cuda.allocator", "ON") \
-    .getOrCreate())
+         .appName("Spark NLP Server") \
+         .config("spark.jars", "/tmp/spark-nlp-assembly-gpu-5.1.4.jar") \
+         .config("spark.nlp.cuda.allocator", "ON") \
+         .getOrCreate())
+
 
 # Text Processing Functions
 def process_text(text):
@@ -31,6 +32,7 @@ def process_text(text):
 
     return sd_model.fullAnnotate(text)
 
+
 def annotation_to_dict(anno):
     return {
         'annotatorType': anno.annotatorType,
@@ -39,6 +41,7 @@ def annotation_to_dict(anno):
         'result': anno.result,
         'metadata': dict(anno.metadata)  # Convert JavaMap to Python dictionary
     }
+
 
 # Flask Routes
 @app.route('/process', methods=['POST'])
@@ -52,6 +55,10 @@ def process():
 
     return jsonify(json_result)
 
-# Run the Flask App
-if __name__ == '__main__':
+
+def run():
     app.run(host='0.0.0.0', port=5000)
+
+
+if __name__ == '__main__':
+    run()

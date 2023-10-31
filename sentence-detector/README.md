@@ -1,6 +1,6 @@
-# Spark-CUDA-based NLP Server
+# Spark-CUDA-based NLP service [Sentence detection]
 
-This project utilizes a custom spark-cuda image to create an NLP server. It uses Spark NLP and a specific pre-trained Sentence Detector model.
+This project utilizes a custom spark-cuda image to create an NLP service. It uses Spark NLP and a specific pre-trained Sentence Detector model.
 
 ## Docker Configuration
 
