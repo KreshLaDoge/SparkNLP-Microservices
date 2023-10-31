@@ -11,8 +11,9 @@ app = Flask(__name__)
 
 # Spark NLP Configuration
 spark = (SparkSession.builder \
-         .appName("Spark NLP Server") \
-         .config("spark.jars", "/tmp/spark-nlp-assembly-gpu-5.1.4.jar") \
+         .config("spark.driver.memory", "16G") \
+         .config("spark.driver.maxResultSize", "0") \
+         .config("spark.kryoserializer.buffer.max", "2000M") \
          .config("spark.nlp.cuda.allocator", "ON") \
          .getOrCreate())
 
