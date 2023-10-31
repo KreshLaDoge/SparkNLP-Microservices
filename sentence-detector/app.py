@@ -10,10 +10,11 @@ import os
 app = Flask(__name__)
 
 # Spark NLP Configuration
-spark = SparkSession.builder \
+spark = (SparkSession.builder \
     .appName("Spark NLP Server") \
-    .config("spark.jars", "/tmp/spark-nlp-assembly-5.1.3.jar") \
-    .getOrCreate()
+    .config("spark.jars", "/tmp/spark-nlp-assembly-gpu-5.1.4.jar") \
+    .config("spark.nlp.cuda.allocator", "ON") \
+    .getOrCreate())
 
 # Text Processing Functions
 def process_text(text):
