@@ -17,20 +17,18 @@ spark = (SparkSession.builder \
          .config("spark.nlp.cuda.allocator", "ON") \
          .getOrCreate())
 
+documenter = DocumentAssembler() \
+    .setInputCol("text") \
+    .setOutputCol("document")
 
+sentencerDL = SentenceDetectorDLModel \
+    .load("model/") \
+    .setInputCols(["document"]) \
+    .setOutputCol("sentences")
+
+sd_model = LightPipeline(PipelineModel(stages=[documenter, sentencerDL]))
 # Text Processing Functions
 def process_text(text):
-    documenter = DocumentAssembler() \
-        .setInputCol("text") \
-        .setOutputCol("document")
-
-    sentencerDL = SentenceDetectorDLModel \
-        .load("model/") \
-        .setInputCols(["document"]) \
-        .setOutputCol("sentences")
-
-    sd_model = LightPipeline(PipelineModel(stages=[documenter, sentencerDL]))
-
     return sd_model.fullAnnotate(text)
 
 
@@ -47,14 +45,17 @@ def annotation_to_dict(anno):
 # Flask Routes
 @app.route('/process', methods=['POST'])
 def process():
-    data = request.json
-    text = data.get('text', '')
-    result = process_text(text)
+    if sd_model:
+        data = request.json
+        text = data.get('text', '')
+        result = process_text(text)
 
-    # Convert Annotation objects to dictionaries
-    json_result = [{k: [annotation_to_dict(vv) for vv in v] if v else None for k, v in res.items()} for res in result]
+        # Convert Annotation objects to dictionaries
+        json_result = [{k: [annotation_to_dict(vv) for vv in v] if v else None for k, v in res.items()} for res in result]
 
-    return jsonify(json_result)
+        return jsonify(json_result)
+    else:
+        return 'Model not initialized yet'
 
 
 def run():
