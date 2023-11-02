@@ -20,8 +20,9 @@ RUN apt-get update && \
 RUN apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
-# Download the JAR directly and place it in the PySpark jars directory
+# Download the JAR directly and place it in the PySpark OR JAVA jars directory
 RUN wget -P /usr/local/lib/python3.10/dist-packages/pyspark/jars/ https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/jars/spark-nlp-gpu-assembly-5.1.4.jar
+# RUN wget -P /usr/lib/jvm/java-11-openjdk-amd64/lib/ https://s3.amazonaws.com/auxdata.johnsnowlabs.com/public/jars/spark-nlp-gpu-assembly-5.1.4.jar
 
 # Set Python environment variable for PySpark
 ENV PYSPARK_PYTHON=python3

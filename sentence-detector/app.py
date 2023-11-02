@@ -1,66 +1,81 @@
-# External Libraries
-from flask import Flask, request, jsonify
+from fastapi import FastAPI, Depends, HTTPException
+from pydantic import BaseModel, Field
 from pyspark.sql import SparkSession
 from sparknlp.base import LightPipeline, DocumentAssembler
 from sparknlp.annotator import SentenceDetectorDLModel
 from pyspark.ml import PipelineModel
-import os
+from typing import List
 
-# Initialization
-app = Flask(__name__)
+app = FastAPI(title="Sentence Detection API v0.1")
 
-# Spark NLP Configuration
-spark = (SparkSession.builder \
-         .config("spark.driver.memory", "16G") \
-         .config("spark.driver.maxResultSize", "0") \
-         .config("spark.kryoserializer.buffer.max", "2000M") \
-         .config("spark.nlp.cuda.allocator", "ON") \
-         .getOrCreate())
+# Global variables to store Spark session and model
+spark: SparkSession = None
+sd_model = None
 
-documenter = DocumentAssembler() \
-    .setInputCol("text") \
-    .setOutputCol("document")
+# Pydantic models
+class RequestModel(BaseModel):
+    text: str = Field(..., description="The input text to be processed by the pipeline.")
 
-sentencerDL = SentenceDetectorDLModel \
-    .load("model/") \
-    .setInputCols(["document"]) \
-    .setOutputCol("sentences")
+class SentenceAnnotation(BaseModel):
+    annotatorType: str
+    begin: int
+    end: int
+    result: str
+    metadata: dict
 
-sd_model = LightPipeline(PipelineModel(stages=[documenter, sentencerDL]))
-# Text Processing Functions
+class ResponseModel(BaseModel):
+    sentences: List[SentenceAnnotation]
+
+# Helper functions
 def process_text(text):
     return sd_model.fullAnnotate(text)
 
-
 def annotation_to_dict(anno):
     return {
-        'annotatorType': anno.annotatorType,
-        'begin': anno.begin,
-        'end': anno.end,
-        'result': anno.result,
-        'metadata': dict(anno.metadata)  # Convert JavaMap to Python dictionary
-    }
+'annotatorType': anno.annotatorType,
+'begin': anno.begin,
+'end': anno.end,
+'result': anno.result,
+'metadata': dict(anno.metadata)  # Convert JavaMap to Python dictionary
+}
 
+# FastAPI startup event to initialize Spark and load the model
+@app.on_event("startup")
+def startup_event():
+    global spark, sd_model
+    spark = (SparkSession.builder
+             .config("spark.driver.memory", "16G")
+             .config("spark.driver.maxResultSize", "0")
+             .config("spark.nlp.cuda.allocator", "ON")
+             .getOrCreate())
 
-# Flask Routes
-@app.route('/process', methods=['POST'])
-def process():
-    if sd_model:
-        data = request.json
-        text = data.get('text', '')
-        result = process_text(text)
+    documenter = DocumentAssembler() \
+                 .setInputCol("text") \
+                 .setOutputCol("document")
 
-        # Convert Annotation objects to dictionaries
-        json_result = [{k: [annotation_to_dict(vv) for vv in v] if v else None for k, v in res.items()} for res in result]
+    sentencerDL = SentenceDetectorDLModel \
+                  .load("model/") \
+                  .setInputCols(["document"]) \
+                  .setOutputCol("sentences")
 
-        return jsonify(json_result)
-    else:
-        return 'Model not initialized yet'
+    sd_model = LightPipeline(PipelineModel(stages=[documenter, sentencerDL]))
 
+@app.post("/process", response_model=ResponseModel, tags=["Sentence Detection"],
+          summary="Detect sentences in given text",
+          description="This endpoint detects sentences in given text Spark NLP pipeline and returns the annotations (enriched objects with sentences).")
+def process(request_data: RequestModel):
+    if not sd_model:
+        raise HTTPException(status_code=500, detail="Model not initialized yet")
 
-def run():
-    app.run(host='0.0.0.0', port=5000)
+    text = request_data.text
+    result = process_text(text)
 
+    # Convert Annotation objects to dictionaries
+    json_result = [{k: [annotation_to_dict(vv) for vv in v] if v else None for k, v in res.items()} for res in result][0]  # Assuming a single result
+
+    return json_result
 
 if __name__ == '__main__':
-    run()
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=5000)
+
