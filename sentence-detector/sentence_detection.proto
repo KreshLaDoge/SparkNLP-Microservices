@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+service SentenceDetectionService {
+    rpc ProcessText(ProcessTextRequest) returns (ProcessTextResponse);
+}
+
+message ProcessTextRequest {
+    string text = 1;
+}
+
+message SentenceAnnotation {
+    int32 begin = 1;
+    int32 end = 2;
+    string result = 3;
+}
+
+message ProcessTextResponse {
+    repeated SentenceAnnotation sentences = 1;
+}
